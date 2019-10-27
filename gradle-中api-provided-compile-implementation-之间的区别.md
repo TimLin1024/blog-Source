@@ -28,7 +28,7 @@ categories:
 
 D、E、F 三个模块都依赖了 Lib 库。
 
-假设 D、E、F 三个模块都以 `implementation` 的方式引用 Lib 库，那么上层的 A，B，C 三个模块都无法引用到 Lib 库中的内容。当 Lib 发生变化的时候，只有 D E F 这三个模块需要重新编译，A,B,C 则不需要（因为 DEF 三个模块对外的接口都没有改变）。
+假设 D、E、F 三个模块都以 `implementation` 的方式引用 Lib 库，那么上层的 A，B，C 三个模块**在编译期**都无法引用到 Lib 库中的内容。因此当 Lib 发生变化的时候，只有 D E F 这三个模块需要重新编译，A,B,C 则不需要（因为 DEF 三个模块对外的接口都没有改变）。
 
 假设 D、E、F 三个模块都以 `compile/api`  的方式引用 Lib 库（对外暴露了自己引用的库的接口），那么无论上层的 A，B，C 三个模块对 D、E、F 模块的依赖是 compile、api 方式还是 implementation 方式，它们（A、B、C）都可以引用到 Lib 库中的内容。这种情况下当 Lib 发生变化的时候，A B C D E F 这三个模块都需要重新编译。
 
