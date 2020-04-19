@@ -24,7 +24,7 @@ categories:
 
 考虑这样的场景，有如下六个模块：
 
-<div align="center"><img src="gradle-中api-provided-compile-implementation-之间的区别.assets/007S8ZIlgy1gdzip6gwfcj30c808zdfz.jpg" alt="" width="450"></div>
+![](https://raw.githubusercontent.com/TimLin-pro/Graph/master/markdown/gradle%20%E6%A8%A1%E5%9D%97%E4%BE%9D%E8%B5%96%E7%A4%BA%E4%BE%8B.jpg)
 
 
 D、E、F 三个模块都依赖了 Lib 库。
@@ -33,7 +33,7 @@ D、E、F 三个模块都依赖了 Lib 库。
 
 假设 D、E、F 三个模块都以 `compile/api`  的方式引用 Lib 库（对外暴露了自己引用的库的接口），那么无论上层的 A，B，C 三个模块对 D、E、F 模块的依赖是 compile、api 方式还是 implementation 方式，它们（A、B、C）都可以引用到 Lib 库中的内容。这种情况下当 Lib 发生变化的时候，A B C D E F 这三个模块都需要重新编译。
 
-
+Public 可以
 
 ## 其它变化
 
