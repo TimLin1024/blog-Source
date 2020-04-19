@@ -1,4 +1,5 @@
 ---
+
 title: 深入理解 ThreadLocal
 date: 2017-08-21 10:53:40
 tags: 
@@ -454,11 +455,14 @@ public static @Nullable Looper myLooper() {
 
 
 ## 总结
+
+> ThreadLocal 通过操作 Thread 中的一个 map（ `ThreadLocal.ThreadLocalMap`），来实现在 Therad 中添加一个逻辑上的成员变量。
+
 我们总结 ThreadLocal 具体是怎么一步一步去为每一个线程创建一个~线程私有变量~的：
 - 首先，在每个线程 Thread 内部有一个 `ThreadLocal.ThreadLocalMap` 类型的成员变量 threadLocals，这个 threadLocals 就是用来存储~线程私有变量的~，键值（key）为当前 ThreadLocal 变量，值 value 为~线程的私有变量~（即 T 类型的变量）。
 - 初始时，在 Thread 里面，threadLocals 为空，当通过 ThreadLocal 变量调用 get() 方法或者 set() 方法，就会对 Thread 类中的 threadLocals 进行初始化，并且以当前 ThreadLocal 变量为 key，以 ThreadLocal 要保存的~线程私有变量~为 value，存到 threadLocals 中。
     - 注意，如果是 先调用 get() 方法而不是 set() 方法的话，会返回 null
-- 然后在当前线程里面，如果要使用~该线程私有变量~，就可以通过 get 方法在 threadLocals 里面查找。
+- 然后在当前线程里面，如果要使用~该线程私有变量~，就可以通过 get 方法在 当前线程的`ThreadLocal.ThreadLocalMap`  中查找。
 
 
 
@@ -471,6 +475,7 @@ public static @Nullable Looper myLooper() {
 - [Java并发编程：深入剖析ThreadLocal](http://www.cnblogs.com/dolphin0520/p/3920407.html)
 - [Android关于ThreadLocal的思考和总结](http://www.jianshu.com/p/95291228aff7)
 - [深入理解ThreadLocal](http://vence.github.io/2016/05/28/threadlocal-info/)
+- [从需求的角度去理解ThreadLocal及源码解析](https://www.jianshu.com/p/e0eb1f6a151a)
 
 
 

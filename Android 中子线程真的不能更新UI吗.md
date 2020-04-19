@@ -11,6 +11,8 @@ categories:
 
 # Android 中子线程真的不能更新 UI 吗？
 
+2020-04-18  更新。
+
 先说结论：Android 中子线程在满足一定的条件下可以更新 UI。
 
 <!--more-->
@@ -99,6 +101,9 @@ void checkThread() {
 
 ```java
 ImageView#setImageResource 
+  -->  如果最新资源的宽度或者高度跟已有的不同，
+  	--> View#requestLayout
+  		--> 满足条件，最终会调用 ViewRootImpl#requestLayout
 	-->  View#invalidate 
 		-->  View#invalidate(boolean)
       		-->  View#invalidateInternal //如果 
@@ -153,135 +158,48 @@ ActivityThread#handleLaunchActivity
 
 ## 一个在子线程更新 UI 的栗子：
 
-下面代码仅用于演示，不适合直接用在实际项目中。
-
 创建一个 handlerThread并调用它的 start 方法，获取handlerThread 中的 looper 构造一个  Handler。在该 Handler的 handleMessage方法（运行在子线程） 中将 view 添加到 WindowManger里面，并支持进行更新操作。
 
-```java
-package com.rdc.timlin.appiumdemo;
-
-import android.graphics.Color;
-import android.graphics.PixelFormat;
-import android.graphics.drawable.ColorDrawable;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Message;
-import android.support.v7.app.AppCompatActivity;
-import android.view.Gravity;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.TextView;
-
-public class MainActivity extends AppCompatActivity {
-    public static final int CREATE_VIEW = 1;
-    public static final int UPDATE_VIEW = 2;
-    private Handler mHandler;
-    private TextView mTextView;
-    private WindowManager mWindowManager;
-    private Button mBtnCreateView;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        mWindowManager = getWindowManager();
-
-        HandlerThread handlerThread = new HandlerThread("my handler thread");
-        handlerThread.start();
-        mTextView = new TextView(MainActivity.this);
-        mHandler = new Handler(handlerThread.getLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                super.handleMessage(msg);
-                WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
-                layoutParams.format = PixelFormat.TRANSPARENT;//设置为 透明，默认效果是 黑色的
-                layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;//设置window透传，也就是当前view所在的window不阻碍底层的window获得触摸事件。
-                switch (msg.what) {
-                    case CREATE_VIEW:
-                        mTextView.setText("created at non-ui-thread");
-                        mTextView.setBackground(new ColorDrawable(Color.WHITE));
-                        layoutParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
-                        layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
-                        layoutParams.gravity = Gravity.CENTER;
-                        mWindowManager.addView(mTextView, layoutParams);
-                        mBtnCreateView.setClickable(false);//添加 TextView 不能 add 两次。add 完之后就屏蔽点击事件
-                        break;
-                    case UPDATE_VIEW:
-                        mTextView.setBackground(new ColorDrawable(Color.WHITE));
-                        mTextView.setText("updated at non-ui-thread");
-                        layoutParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
-                        layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
-                        layoutParams.gravity = Gravity.LEFT;
-                        mWindowManager.updateViewLayout(mTextView, layoutParams);
-                        break;
-                }
-            }
-        };
-        initView();
-    }
-
-    private void initView() {
-        mBtnCreateView = findViewById(R.id.btn_create_view);
-        Button btnUpdateView = findViewById(R.id.btn_update_view);
-        mBtnCreateView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mHandler.sendEmptyMessage(CREATE_VIEW);
-            }
-        });
-
-        btnUpdateView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mHandler.sendEmptyMessage(UPDATE_VIEW);
-            }
-        });
-    }
-}
-```
-
-布局文件。activity_main.xml
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    tools:context=".MainActivity">
-
-    <Button
-        android:id="@+id/btn_create_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Create View in subThread"/>
-
-    <Button
-        android:id="@+id/btn_update_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="update View in subThread"/>
-
-</LinearLayout>
-```
+[示例代码地址](https://github.com/TimLin-pro/UpdateUiOnSubThread/blob/master/app/src/main/java/com/timlin/updateuionsubthread/ManageUiOnHandlerThreadActivity.java)
 
 ## 总结：
 
-ViewRootImpl 的创建在 onResume 方法回调之后，而我们一开篇是在 onCreate 方法中创建了子线程并访问 UI，在那个时刻，ViewRootImpl 还没有创建，无法检测当前线程是否是创建的 UI 那个线程，所以程序没有崩溃一样能跑起来，而之后修改了程序，让线程休眠了 300 毫秒后，程序就崩了。很明显 300 毫秒后 ViewRootImpl 已经创建了，可以执行 checkThread 方法检查当前线程。
+ViewRootImpl 的创建在 onResume 方法回调之后，而我们一开篇是在 onCreate 方法中创建了子线程并访问 UI，在那个时刻，ViewRootImpl 还没有创建，我们在子线程调用 了 ImageView#setImageResource，虽然可能会触发 View#requestLayout 和 View#invalidate() ，但是由于 ViewRootImpl还未创建出来，因此 ViewRootImpl#checkThread 没有被调用到，也就是说，检测当前线程是否是创建的 UI 那个线程 的逻辑没有执行到，所以程序没有崩溃一样能跑起来。而之后修改了程序，让线程休眠了 300 毫秒后，程序就崩了。很明显 300 毫秒后 ViewRootImpl 已经创建了，可以执行 checkThread 方法检查当前线程。
 
 开篇的例子中我们在 onCreate 方法中创建的子线程访问 UI 是一种极端的情况。实际开发中不会这么做。
 
 
 
-下次如果有人问你 Android 中子线程真的不能更新 UI 吗？ 你可以这么回答：
+#### 下次如果有人问你 Android 中子线程真的不能更新 UI 吗？ 你可以这么回答：
 
-> 子线程可以更新 UI，但是需要创建子线程的根视图（ViewRoot），并添加到 WindowManager，还要创建子线程的 Looper。以上条件都满足时，它可以修改它自己创建的根视图中的 UI。
+任何线程都可以更新自己创建的 UI。只要保证满足下面几个条件就好了
+
+- 在 ViewRootImpl 还没创建出来之前
+
+  - UI 修改的操作没有线程限制。
+
+- 在 ViewRootImpl 创建完成之后
+
+  1. 保证「创建 ViewRootImpl 的操作」和「执行修改 UI 的操作」在同一个线程即可。也就是说，要在同一个线程调用 ViewManager#addView 和 ViewManager#updateViewLayout 的方法。
+     - 注：ViewManager 是一个接口，WindowManger 接口继承了这个接口，我们通常都是通过 WindowManger（具体实现为 WindowMangerImpl） 进行 view 的 add remove update 操作的。
+
+  2. 对应的线程需要创建 Looper 并且调用 Looper#loop 方法，开启消息循环。
+
+
+
+#### 有同学可能会问，保证上述条件 1 成立，不就可以避免 checkThread 时候抛出异常了吗？为什么还需要开启消息循坏？
+
+- 条件 1 可以避免检查异常，但是无法保证 UI 可以被绘制出来。
+- 条件 2 可以让更新的 UI 效果呈现出来
+  - WindowManger#addView 最终会调用 WindowManageGlobal#addView 方法，进而触发ViewRootImpl#setView 方法，该方法内部会调用 ViewRootImpl#requestLayout 方法。
+  - 了解过 UI 绘制原理的同学应该知道 下一步就是 scheduleTraversals 了，该方法会往消息队列中插入一条消息屏障，然后调用 Choreographer#postCallback 方法，往 looper 中插入一条异步的 MSG_DO_SCHEDULE_CALLBACK 消息。等待垂直同步信号回来之后执行。
+    - 注：ViewRootImpl 有一个 Choreographer  成员变量，ViewRootImpl 的构造函数中会调用 Choreographer#getInstance(); 方法，获取一个当前线程的 Choreographer 局部实例。
+
+
+
+#### 使用子线程更新 UI 有实际应用场景吗？
+
+Android 中的  SurfaceView 通常会通过一个子线程来进行页面的刷新。如果我们的自定义 View 需要频繁刷新，或者刷新时数据处理量比较大，那么可以考虑使用 SurfaceView 来取代 View。
 
 
 

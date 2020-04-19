@@ -450,7 +450,7 @@ GC 日志开头的 「[GC」和「[Full  GC」**说明了这次垃圾收集的==
 
 大多数情况下，对象在新生代 Eden 区中分配。当 Eden 区没有足够空间进行分配时，虚拟机将发起一次 **Minor GC**。
 
-#### Minor GC 和 Full GC 有什么不一样吗？
+#### Minor GC 和 Full/major GC 有什么不一样吗？
 
 -   **新生代 GC**（Minor GC）：指发生在**新生代的垃圾收集动作**，因为 Java 对象大多都具备朝生夕灭的特性，所以 Minor GC 非常频繁，一般回收速度也比较快。
 -   **老年代 GC**（Major GC/Full GC）：指发生在老年代的 GC，出现了 Major GC，**经常会伴随至少一次的 Minor GC**（但非绝对的，在 Parallel Scavenge 收集器的收集策略里就有直接进行 Major GC 的策略选择过程）。**Major GC 的速度一般会比 Minor GC 慢 10 倍以上**。

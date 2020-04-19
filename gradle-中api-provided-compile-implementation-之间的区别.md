@@ -24,7 +24,8 @@ categories:
 
 考虑这样的场景，有如下六个模块：
 
-![依赖示意图](https://ws3.sinaimg.cn/large/006tNc79gy1fsme3uaov4j30g20bsjrl.jpg)
+<div align="center"><img src="gradle-中api-provided-compile-implementation-之间的区别.assets/007S8ZIlgy1gdzip6gwfcj30c808zdfz.jpg" alt="" width="450"></div>
+
 
 D、E、F 三个模块都依赖了 Lib 库。
 
